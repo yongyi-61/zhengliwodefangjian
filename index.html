@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图形收集与整理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            font-family: 'Arial Rounded MT Bold', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: #5a3921;
+            overflow-x: hidden;
+            padding: 10px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 10px 0;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            color: #8b4513;
+            margin-bottom: 5px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            color: #a0522d;
+        }
+        
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        @media (min-width: 768px) {
+            .game-area {
+                flex-direction: row;
+            }
+            
+            .game-board-container {
+                flex: 2;
+            }
+            
+            .storage-area {
+                flex: 1;
+            }
+        }
+        
+        .game-board-container {
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            aspect-ratio: 1/1;
+        }
+        
+        .card {
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            font-size: 1.8rem;
+            background: rgba(255, 255, 255, 0.7);
+            user-select: none;
+        }
+        
+        .card.darkened {
+            background: rgba(210, 180, 140, 0.8);
+            box-shadow: 0 0 0 2px #8b4513;
+        }
+        
+        .card.double-darkened {
+            background: rgba(160, 120, 80, 0.8);
+            box-shadow: 0 0 0 3px #8b4513;
+        }
+        
+        .card.dragging {
+            opacity: 0.7;
+            transform: scale(1.1);
+        }
+        
+        .card.matched {
+            animation: matched 0.5s ease forwards;
+        }
+        
+        @keyframes matched {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { 
+                transform: scale(0);
+                opacity: 0;
+            }
+        }
+        
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 50px;
+            background: #d2691e;
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            flex: 1;
+            max-width: 160px;
+        }
+        
+        button:hover {
+            background: #b35917;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        .storage-area {
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .storage-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            color: #8b4513;
+        }
+        
+        .storage-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .storage-box {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 10px;
+            padding: 12px;
+            min-height: 80px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .storage-box:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-3px);
+        }
+        
+        .storage-box h3 {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.1rem;
+            color: #8b4513;
+        }
+        
+        .storage-count {
+            background: #d2691e;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            margin-left: auto;
+        }
+        
+        .storage-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-height: 50px;
+        }
+        
+        .storage-item {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            font-size: 1.8rem;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            font-size: 0.9rem;
+        }
+        
+        .instructions h2 {
+            margin-bottom: 8px;
+            font-size: 1.2rem;
+            color: #8b4513;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 6px;
+        }
+        
+        /* 拖放效果 */
+        .drag-over {
+            background: rgba(210, 180, 140, 0.5) !important;
+            border: 2px dashed #8b4513;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 600px) {
+            .game-board {
+                grid-template-columns: repeat(5, 1fr);
+            }
+            
+            button {
+                padding: 10px 15px;
+                font-size: 0.9rem;
+            }
+            
+            .card, .storage-item {
+                font-size: 1.5rem;
+            }
+        }
+        
+        @media (max-width: 400px) {
+            .game-board {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        
+        /* 新表情生成动画 */
+        .new-emoji {
+            animation: appear 0.5s ease;
+        }
+        
+        @keyframes appear {
+            0% { transform: scale(0); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        /* 收纳详情弹窗 */
+        .storage-detail {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        
+        .storage-detail.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .storage-detail-content {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            border-radius: 20px;
+            padding: 25px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .storage-detail h2 {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            color: #8b4513;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .detail-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .detail-item {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+            font-size: 2rem;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        
+        .close-btn {
+            margin-top: 20px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>图形收集与整理</h1>
+            <p class="subtitle">拖动相同表情叠加合成，整理物品到对应位置</p>
+        </header>
+        
+        <div class="game-area">
+            <div class="game-board-container">
+                <div class="game-board" id="gameBoard">
+                    <!-- 表情卡片将通过JS动态生成 -->
+                </div>
+                
+                <div class="actions">
+                    <button id="hintBtn">提示</button>
+                    <button id="shuffleBtn">重排</button>
+                </div>
+            </div>
+            
+            <div class="storage-area">
+                <h2 class="storage-title">收纳区</h2>
+                <div class="storage-container">
+                    <div class="storage-box" id="wardrobeBox" data-type="clothing">
+                        <h3>
+                            <i>👕</i> 衣柜 (衣物)
+                            <span class="storage-count" id="wardrobeCount">0</span>
+                        </h3>
+                    </div>
+                    <div class="storage-box" id="deskBox" data-type="stationery">
+                        <h3>
+                            <i>📝</i> 书桌 (文具)
+                            <span class="storage-count" id="deskCount">0</span>
+                        </h3>
+                    </div>
+                    <div class="storage-box" id="toyboxBox" data-type="toy">
+                        <h3>
+                            <i>🧸</i> 玩具箱 (玩具)
+                            <span class="storage-count" id="toyboxCount">0</span>
+                        </h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h2>游戏说明</h2>
+            <ul>
+                <li>拖动表情到相同表情上进行叠加</li>
+                <li>叠加位置背景色会变深，表示已叠加数量</li>
+                <li>叠加三个相同表情会合成衣物、文具或玩具</li>
+                <li>将合成物品拖放到对应的收纳区域</li>
+                <li>点击收纳区域查看已收集的物品</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 收纳详情弹窗 -->
+    <div class="storage-detail" id="storageDetail">
+        <div class="storage-detail-content">
+            <h2 id="detailTitle"><i>👕</i> 衣柜</h2>
+            <div class="detail-items" id="detailItems">
+                <!-- 物品将通过JS动态生成 -->
+            </div>
+            <button class="close-btn" id="closeDetail">关闭</button>
+        </div>
+    </div>
+
+    <script>
+        // 游戏状态
+        const gameState = {
+            board: [],
+            gameActive: true,
+            emojiCounts: {},
+            dragSource: null,
+            storage: {
+                clothing: [],
+                stationery: [],
+                toy: []
+            }
+        };
+
+        // 表情类型
+        const emojis = ['🐶', '🐱', '🐰', '🐻', '🐼', '🐯', '🦁', '🐮', '🐷', '🐸'];
+        
+        // 合成物品类型 - 增加了更多种类
+        const itemTypes = {
+            clothing: [
+                { emoji: '👕', class: 'item-shirt' },
+                { emoji: '👖', class: 'item-pants' },
+                { emoji: '🧢', class: 'item-hat' },
+                { emoji: '👔', class: 'item-shirt' },
+                { emoji: '👗', class: 'item-pants' },
+                { emoji: '🥼', class: 'item-hat' },
+                { emoji: '🩳', class: 'item-shirt' },
+                { emoji: '👚', class: 'item-pants' },
+                { emoji: '🧦', class: 'item-hat' }
+            ],
+            stationery: [
+                { emoji: '🖊️', class: 'item-pen' },
+                { emoji: '✏️', class: 'item-pencil' },
+                { emoji: '📓', class: 'item-notebook' },
+                { emoji: '📔', class: 'item-pen' },
+                { emoji: '📒', class: 'item-pencil' },
+                { emoji: '📕', class: 'item-notebook' },
+                { emoji: '📗', class: 'item-pen' },
+                { emoji: '📘', class: 'item-pencil' },
+                { emoji: '📙', class: 'item-notebook' },
+                { emoji: '📚', class: 'item-pen' },
+                { emoji: '📖', class: 'item-pencil' }
+            ],
+            toy: [
+                { emoji: '🧸', class: 'item-toy' },
+                { emoji: '👶', class: 'item-doll' },
+                { emoji: '🚗', class: 'item-car' },
+                { emoji: '🚂', class: 'item-toy' },
+                { emoji: '✈️', class: 'item-doll' },
+                { emoji: '🚁', class: 'item-car' },
+                { emoji: '🚲', class: 'item-toy' },
+                { emoji: '🛴', class: 'item-doll' },
+                { emoji: '🏀', class: 'item-car' },
+                { emoji: '⚽', class: 'item-toy' },
+                { emoji: '🎮', class: 'item-doll' },
+                { emoji: '🎲', class: 'item-car' }
+            ]
+        };
+
+        // DOM 元素
+        const gameBoardEl = document.getElementById('gameBoard');
+        const hintBtn = document.getElementById('hintBtn');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+        const storageDetailEl = document.getElementById('storageDetail');
+        const detailTitleEl = document.getElementById('detailTitle');
+        const detailItemsEl = document.getElementById('detailItems');
+        const closeDetailBtn = document.getElementById('closeDetail');
+        const wardrobeCountEl = document.getElementById('wardrobeCount');
+        const deskCountEl = document.getElementById('deskCount');
+        const toyboxCountEl = document.getElementById('toyboxCount');
+
+        // 初始化游戏
+        function initGame() {
+            generateBoard();
+            
+            // 事件监听
+            hintBtn.addEventListener('click', showHint);
+            shuffleBtn.addEventListener('click', shuffleBoard);
+            closeDetailBtn.addEventListener('click', closeStorageDetail);
+            
+            // 设置放置区域
+            setupDropZones();
+            
+            // 设置收纳区点击事件
+            setupStorageClick();
+        }
+
+        // 生成游戏板
+        function generateBoard() {
+            gameBoardEl.innerHTML = '';
+            gameState.board = [];
+            gameState.emojiCounts = {};
+            
+            const cardCount = window.innerWidth < 600 ? 20 : 30;
+            
+            for (let i = 0; i < cardCount; i++) {
+                createNewEmoji();
+            }
+        }
+
+        // 创建新表情
+        function createNewEmoji(parentElement) {
+            const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+            
+            const card = document.createElement('div');
+            card.className = 'card new-emoji';
+            card.textContent = emoji;
+            card.dataset.emoji = emoji;
+            card.dataset.count = 1; // 初始计数为1
+            
+            // 添加拖拽事件
+            card.setAttribute('draggable', true);
+            card.addEventListener('dragstart', handleDragStart);
+            card.addEventListener('dragend', handleDragEnd);
+            card.addEventListener('dragover', handleDragOver);
+            card.addEventListener('drop', handleDrop);
+            
+            if (parentElement) {
+                parentElement.appendChild(card);
+            } else {
+                gameBoardEl.appendChild(card);
+                gameState.board.push(card);
+            }
+            
+            // 更新表情计数
+            gameState.emojiCounts[emoji] = (gameState.emojiCounts[emoji] || 0) + 1;
+            
+            return card;
+        }
+
+        // 拖拽开始
+        function handleDragStart(e) {
+            if (!gameState.gameActive) return;
+            
+            gameState.dragSource = this;
+            this.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', this.dataset.emoji);
+            e.dataTransfer.setData('count', this.dataset.count);
+            e.dataTransfer.setData('type', this.dataset.type || 'emoji');
+        }
+
+        // 拖拽结束
+        function handleDragEnd() {
+            this.classList.remove('dragging');
+            gameState.dragSource = null;
+        }
+
+        // 拖拽经过
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+
+        // 放置
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            if (!gameState.dragSource || this === gameState.dragSource) return;
+            
+            const sourceEmoji = gameState.dragSource.dataset.emoji;
+            const targetEmoji = this.dataset.emoji;
+            
+            // 检查是否是相同的表情
+            if (sourceEmoji === targetEmoji) {
+                const sourceCount = parseInt(gameState.dragSource.dataset.count);
+                const targetCount = parseInt(this.dataset.count);
+                const newCount = targetCount + sourceCount;
+                
+                // 更新目标卡片
+                this.dataset.count = newCount;
+                
+                // 更新背景色
+                if (newCount === 2) {
+                    this.classList.add('darkened');
+                } else if (newCount >= 3) {
+                    this.classList.remove('darkened');
+                    this.classList.add('double-darkened');
+                    
+                    // 三个相同表情，合成新物品
+                    setTimeout(() => {
+                        createNewItem(this);
+                    }, 300);
+                }
+                
+                // 移除源卡片
+                const sourceIndex = gameState.board.indexOf(gameState.dragSource);
+                gameState.dragSource.remove();
+                gameState.board.splice(sourceIndex, 1);
+                
+                // 更新表情计数
+                gameState.emojiCounts[sourceEmoji] -= 1;
+                
+                // 在原位置生成新的随机表情
+                setTimeout(() => {
+                    const newCard = createNewEmoji();
+                    // 确保新卡片在正确的位置
+                    if (sourceIndex < gameBoardEl.children.length) {
+                        gameBoardEl.insertBefore(newCard, gameBoardEl.children[sourceIndex]);
+                    } else {
+                        gameBoardEl.appendChild(newCard);
+                    }
+                    gameState.board.splice(sourceIndex, 0, newCard);
+                }, 200);
+            }
+        }
+
+        // 创建新物品
+        function createNewItem(card) {
+            // 随机选择物品类型
+            const typeKeys = Object.keys(itemTypes);
+            const itemType = typeKeys[Math.floor(Math.random() * typeKeys.length)];
+            
+            // 随机选择物品
+            const item = itemTypes[itemType][Math.floor(Math.random() * itemTypes[itemType].length)];
+            
+            // 替换卡片为物品
+            card.textContent = item.emoji;
+            card.classList.remove('double-darkened');
+            card.classList.add(item.class);
+            card.dataset.type = itemType;
+            card.dataset.count = 0; // 重置计数
+            card.dataset.emoji = item.emoji;
+        }
+
+        // 设置放置区域
+        function setupDropZones() {
+            const dropZones = [
+                { element: document.getElementById('wardrobeBox'), type: 'clothing' },
+                { element: document.getElementById('deskBox'), type: 'stationery' },
+                { element: document.getElementById('toyboxBox'), type: 'toy' }
+            ];
+            
+            dropZones.forEach(zone => {
+                zone.element.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    zone.element.classList.add('drag-over');
+                });
+                
+                zone.element.addEventListener('dragleave', () => {
+                    zone.element.classList.remove('drag-over');
+                });
+                
+                zone.element.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.element.classList.remove('drag-over');
+                    
+                    const itemType = e.dataTransfer.getData('type');
+                    const itemEmoji = e.dataTransfer.getData('text/plain');
+                    
+                    if (itemType === zone.type) {
+                        // 正确放置
+                        gameState.storage[itemType].push(itemEmoji);
+                        
+                        // 更新收纳计数
+                        updateStorageCounts();
+                        
+                        // 移除已放置的物品
+                        const sourceIndex = gameState.board.indexOf(gameState.dragSource);
+                        gameState.dragSource.remove();
+                        gameState.board.splice(sourceIndex, 1);
+                        
+                        // 在原位置生成新的随机表情
+                        setTimeout(() => {
+                            const newCard = createNewEmoji();
+                            // 确保新卡片在正确的位置
+                            if (sourceIndex < gameBoardEl.children.length) {
+                                gameBoardEl.insertBefore(newCard, gameBoardEl.children[sourceIndex]);
+                            } else {
+                                gameBoardEl.appendChild(newCard);
+                            }
+                            gameState.board.splice(sourceIndex, 0, newCard);
+                        }, 200);
+                    } else {
+                        // 错误放置
+                        alert('物品不能放在这里！请放到正确的位置。');
+                    }
+                });
+            });
+        }
+
+        // 设置收纳区点击事件
+        function setupStorageClick() {
+            const storageBoxes = document.querySelectorAll('.storage-box');
+            
+            storageBoxes.forEach(box => {
+                box.addEventListener('click', () => {
+                    const type = box.dataset.type;
+                    showStorageDetail(type);
+                });
+            });
+        }
+
+        // 显示收纳详情
+        function showStorageDetail(type) {
+            const items = gameState.storage[type];
+            const typeNames = {
+                'clothing': '衣柜',
+                'stationery': '书桌',
+                'toy': '玩具箱'
+            };
+            const typeIcons = {
+                'clothing': '👕',
+                'stationery': '📝',
+                'toy': '🧸'
+            };
+            
+            detailTitleEl.innerHTML = `<i>${typeIcons[type]}</i> ${typeNames[type]}`;
+            detailItemsEl.innerHTML = '';
+            
+            if (items.length === 0) {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.textContent = '还没有收集到物品';
+                emptyMsg.style.textAlign = 'center';
+                emptyMsg.style.color = '#8b4513';
+                emptyMsg.style.padding = '20px';
+                detailItemsEl.appendChild(emptyMsg);
+            } else {
+                items.forEach(item => {
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'detail-item';
+                    itemEl.textContent = item;
+                    detailItemsEl.appendChild(itemEl);
+                });
+            }
+            
+            storageDetailEl.classList.add('active');
+        }
+
+        // 关闭收纳详情
+        function closeStorageDetail() {
+            storageDetailEl.classList.remove('active');
+        }
+
+        // 更新收纳计数
+        function updateStorageCounts() {
+            wardrobeCountEl.textContent = gameState.storage.clothing.length;
+            deskCountEl.textContent = gameState.storage.stationery.length;
+            toyboxCountEl.textContent = gameState.storage.toy.length;
+        }
+
+        // 显示提示
+        function showHint() {
+            if (!gameState.gameActive) return;
+            
+            // 查找可能的匹配
+            let hintEmoji = null;
+            
+            for (const emoji in gameState.emojiCounts) {
+                if (gameState.emojiCounts[emoji] >= 2) {
+                    hintEmoji = emoji;
+                    break;
+                }
+            }
+            
+            if (hintEmoji) {
+                // 高亮显示匹配的表情
+                gameState.board.forEach(card => {
+                    if (card.dataset.emoji === hintEmoji && card.dataset.count < 3) {
+                        card.style.boxShadow = '0 0 0 3px #8b4513, 0 5px 15px rgba(0, 0, 0, 0.3)';
+                        
+                        setTimeout(() => {
+                            card.style.boxShadow = '';
+                        }, 2000);
+                    }
+                });
+            } else {
+                alert('没有找到可匹配的表情！');
+            }
+        }
+
+        // 重排游戏板
+        function shuffleBoard() {
+            if (!gameState.gameActive) return;
+            
+            // 保存当前状态
+            const emojiData = gameState.board.map(card => ({
+                emoji: card.dataset.emoji,
+                count: parseInt(card.dataset.count),
+                type: card.dataset.type,
+                class: Array.from(card.classList).find(cls => cls.startsWith('item-'))
+            }));
+            
+            // 清空游戏板
+            gameBoardEl.innerHTML = '';
+            gameState.board = [];
+            
+            // 重新生成卡片（保持相同的表情和状态）
+            emojiData.forEach(data => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.textContent = data.emoji;
+                card.dataset.emoji = data.emoji;
+                card.dataset.count = data.count;
+                
+                if (data.type) {
+                    card.dataset.type = data.type;
+                    card.classList.add(data.class);
+                }
+                
+                // 根据计数设置背景色
+                if (data.count === 2) {
+                    card.classList.add('darkened');
+                } else if (data.count === 3) {
+                    card.classList.add('double-darkened');
+                }
+                
+                // 添加拖拽事件
+                card.setAttribute('draggable', true);
+                card.addEventListener('dragstart', handleDragStart);
+                card.addEventListener('dragend', handleDragEnd);
+                card.addEventListener('dragover', handleDragOver);
+                card.addEventListener('drop', handleDrop);
+                
+                gameBoardEl.appendChild(card);
+                gameState.board.push(card);
+            });
+        }
+
+        // 启动游戏
+        initGame();
+    </script>
+</body>
+</html>
